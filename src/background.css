@@ -1,0 +1,78 @@
+::selection {
+    background-color: #308d46;
+    color: white;
+}
+
+body::-webkit-scrollbar {
+    width: 12px;               /* width of the entire scrollbar */
+}
+  
+body::-webkit-scrollbar-track {
+    background: white;        /* color of the tracking area */
+}
+  
+body::-webkit-scrollbar-thumb {
+    background-color: rgb(163, 163, 163);    /* color of the scroll thumb */
+    border-radius: 20px;       /* roundness of the scroll thumb */
+    /* border: 3px solid orange;  creates padding around scroll thumb */
+}
+
+.productImages {
+	transition: transform 290ms;
+
+  }
+  
+  .productImages:hover {
+    transform: translateY(-20px);
+  }
+
+
+  /* .productImages {
+	transition: transform 250ms;
+
+  }
+  
+  .productImages:hover {
+    transform: translateY(-20px);
+  } */
+
+#background{
+  background-image: url("https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png");
+}
+
+
+.btn.btn-primary[disabled] {
+  background-color: red;
+  border-color: red;
+}
+
+.btn.btn-primary {
+  background-color: #1fa33e;
+  border-color:white;
+}
+
+html {  
+  scroll-behavior: smooth;  
+}
+
+
+.box {
+  animation-duration: 4s;
+  animation-iteration-count: infinite;
+
+}
+
+.bounce-1 {
+  animation-name: bounce-1;
+  animation-timing-function: linear;
+}
+@keyframes bounce-1 {
+  0%   { transform: translateY(0); }
+  50%  { transform: translateY(-25px); }
+  100% { transform: translateY(0); }
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100vh;
+}

@@ -1,0 +1,65 @@
+style={{ backgroundColor: "#4582ec", color: 'white' }}
+
+
+// if(cardnumber.charAt(0) === '5' && cardnumber.length === 16 && cardholdername.length === 21 ){
+//   setCardholdernameErr("Mastercard");
+//   setCardnumberErr("Mastercard");
+// }else{
+//   setCardholdernameErr("");
+// } setCardnumberErr("");
+
+    // if (cardnumber.length === 15 && cardnumber[0] === "3" && cardnumber[1] === "4") {
+    //   setCardnumberErr("American Express+++");
+    // } else {
+    //   setCardnumberErr("+");
+    // }
+    // console.log('cardnumber[0]',cardnumber[0],'cardnumber[1]',cardnumber[1]);
+    // if (cardnumber.length === 15 && cardnumber[0] === "3" && cardnumber[1] === "7") {
+    //   setCardnumberErr("American Express");
+    // } else {
+    //   setCardnumberErr("*");
+    // }
+    // if (cardnumber.slice(0, 1) === 6 && cardnumber.length === 16) {
+    //   setCardnumberErr("Discover card");
+    // } else {
+    //   setCardnumberErr("Not a Discover card");
+    // }
+
+    // if (cardnumber.slice(0,1) === 5 && cardnumber.length === 16) {
+    //   setCardnumberErr("Mastercard");
+    // } else {
+    //   setCardnumberErr("Not a Mastercard");
+    // }
+
+    // // } 
+
+    //---------------------------------------------
+    // if (cardholdername === "" || cardholdername.length > 26) {
+    //   setCardholdernameErr("Not vaild");
+    // } else {
+    //   setCardholdernameErr("");
+    // }
+
+    // if (cardnumber.length === 16) {
+    //   setCardnumberErr("");
+    // } else {
+    //   setCardnumberErr("Not a vaild");
+    // }
+    // if (+expirydate < +new Date()) {
+    //   setExpirydateErr("Its expiryed");
+    // } else {
+    //   setExpirydateErr("");
+    // }
+    // if (cvccode.length !== 3) {
+    //   setCvccodeErr("3 num");
+    // } else {
+    //   setCvccodeErr("");
+    // }
+
+    //if(expirydate > new Date() && cvccode.length === 3 && cardnumber.length === 16 && cardholdername !== ""){
+    //create()
+    // const cart= await db.Carts.findByUseridAndStatus(user.id, 'unpaid')
+    // const cartItem = await db.Cartitems.findByCartid(cart[0].id)
+    // console.log(cartItem);
+
+

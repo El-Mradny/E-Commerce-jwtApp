@@ -1,0 +1,265 @@
+import React, { useContext, useEffect, useState } from 'react';
+import db from '../../db';
+import ProgressBar from 'react-bootstrap/ProgressBar';
+import Button from 'react-bootstrap/Button';
+import { Link } from "react-router-dom";
+import { useHistory } from "react-router-dom";
+import UserContext from '../../UserContext';
+import Form from 'react-bootstrap/Form';
+import validator from 'validator';
+import {
+  useParams
+} from "react-router-dom";
+
+export default function Payment() {
+  const now = 99;
+  const history = useHistory();
+  const progressInstance = <ProgressBar now={now} animated striped variant="primary" label={`${now}%`} />;
+
+  const { totalCost: stringTotal } = useParams();
+  const totalCost = 1 * stringTotal
+
+  const { totalShipping: stringShippingCost } = useParams();
+  const totalShipping = 1 * stringShippingCost
+
+  console.log('payment totalCost', totalCost);
+  console.log('payment totalShipping', totalShipping);
+  
+  const { user } = useContext(UserContext)
+
+  const [payments, setPayments] = useState([])
+  useEffect(() => (async () => setPayments(await db.Payments.findAll()))(), [])
+  console.log(payments);
+
+  const [id, setId] = useState(0)
+  const [method, setMethod] = useState("")
+  const [cardnumber, setCardnumber] = useState("")
+  const [cardholdername, setCardholdername] = useState("")
+  const [cvccode, setCvccode] = useState(0)
+  const [expirydate, setExpirydate] = useState(new Date())
+
+  const [cardnumberErr, setCardnumberErr] = useState("")
+  const [cardholdernameErr, setCardholdernameErr] = useState("")
+  const [cvccodeErr, setCvccodeErr] = useState("")
+  const [expirydateErr, setExpirydateErr] = useState("")
+
+  const createPayments = async () => {
+    await db.Payments.create(() => { }, { id, method:'Credit card', cardnumber: cardnumber.slice(0, 7), cardholdername, cvccode: cvccode.slice(0, 2), expirydate })
+    setId(0)
+    setMethod("")
+    setCardnumber("")
+    setCardholdername("")
+    setCvccode("")
+    setExpirydate(new Date())
+  }
+
+  //--------------------------------------------------------------
+
+  // private Long id;
+  // private String status;
+  // private String userid;
+  // private Long paymentid;
+  // private Long shippingid;
+  // private Timestamp checkoutdate;
+  // private String orderstatus;
+  // private Double total;
+  // private Long discountid;
+
+
+
+  const [products, setProducts] = useState([])
+  useEffect(() => (async () => setProducts(await db.Products.findAll()))(), [])
+  //console.log(products);
+
+ 
+
+  const Stock = async () => {
+    const cart = await db.Carts.findByUseridAndStatus(user.id, 'unpaid')
+    const cartItem = await db.Cartitems.findByCartid(cart[0].id)
+    cartItem && cartItem.map(async (item) => {
+      if (item.productid !== null) {
+        const product = await db.Products.findOne(item.productid)
+        await db.Products.update(() => { }, {
+          id: product.id, name: product.name, price: product.price,
+          sunlight: product.sunlight, water: product.water, temperature: product.temperature, measures: product.measures,
+          category: product.category,
+          status: product.status, quantity: product.quantity - item.productqty, date: product.date, image: product.image, description: product.description
+        })
+      }
+
+      if (item.packageid !== null) {
+        const pack = await db.Packages.findOne(item.packageid)//packages
+        //console.log(pack);
+        const packproducts = await db.Packageproducts.findByPackageid(pack.id)//list of products inside the package
+        //console.log(packproducts);
+        packproducts.map(async (itemm) => {
+          //console.log(itemm.id);
+          const product = await db.Products.findOne(itemm.productid)//the product inside it 
+          //console.log(product);
+          await db.Products.update(() => { }, {
+            id: product.id, name: product.name, price: product.price,
+            sunlight: product.sunlight, water: product.water, temperature: product.temperature, measures: product.measures,
+            category: product.category,
+            status: product.status, quantity: product.quantity - item.packageqty, date: product.date, image: product.image, description: product.description
+          })
+        })
+      }
+    })
+  }
+
+  const [cart, setCart] = useState([])
+  useEffect(() => (async () => setCart(await db.Carts.findByUseridAndStatus(user.id, "unpaid")))(), [user.id])
+  console.log(cart);
+
+  const [carts, setCarts] = useState([])
+  useEffect(() => (async () => setCarts(await db.Carts.findAll()))(), [])
+
+  const [Shippings, setShippings] = useState(null)
+  useEffect(() => (async () => setShippings(await db.Shippings.findByUserid(user.id)))(), [user.id])
+  //console.log(Shippings);
+
+  const Closing = async () => {
+    // const cart = await db.Carts.findByUseridAndStatus(user.id, 'unpaid')
+    // console.log(cart[0]);
+    // const shipping = await db.Shippings.findByUserid(user.id)
+    //console.log(shipping[0]);
+    // carts && Shippings &&
+    // await db.Carts.update(setCarts, { ...carts[0],status: "paid",paymentid:id,shippingid:Shippings[0],
+    // checkoutdate:new Date(),orderstatus:"Processing",totalCost:totalCost})
+
+    // await db.Carts.create(setCarts, {status: "unpaid",userid: user.id})
+    //console.log(carts[0]);
+    //window.location = "http://localhost:3000/";
+
+    carts && user &&
+      await db.Carts.update(setCart, { ...cart[0], status: "paid" })
+      await db.Carts.create(setCarts, {
+      status: "unpaid", userid: user.id, paymentid: null, shippingid: null, checkoutdate: null, orderstatus: null,
+      totalCost: null
+    })
+  }
+
+  // const CheckOut = async () => {
+  //   await db.Carts.update(setCarts, { ...carts[0], status: "paid" })
+  //   await db.Carts.create(setCarts, { status: "unpaid", userid: user.id })
+  //   window.location = "http://localhost:3000/";
+  // }
+
+  // const cart= await db.Carts.findByUseridAndStatus(user.id, 'unpaid')
+  // const cartItem = await db.Cartitems.findByCartid(cart[0].id)
+  // console.log(cartItem);
+
+  return (
+    <>
+      <br></br>
+      {progressInstance}
+      <br></br>
+      <h1>Payment</h1>
+      <br></br>
+
+      <div className="container">
+        <div className="row">
+          <div className="col-sm-5" style={{ color: 'black', backgroundColor: '#b9b8b5', borderRadius: '20px', height: '300px', margin: '10px' }}>
+            <br></br>
+            {/* <img
+              src="../CARD.jpg"
+              alt="card"
+              width='13%'
+            /> */}
+            
+            <div style={{
+              marginLeft: '200px',
+            }}>
+
+            </div>
+            <br></br><br></br><br></br>
+            <Form.Control type="text" placeholder="Card number" onChange={event => setCardnumber(event.target.value)} value={cardnumber} />
+
+            <span style={{ fontWeight: 'bold', color: 'red' }}>{cardnumberErr}</span>
+            <br></br>
+
+            <div className="row">
+              <div className="col-8 col-sm-6">
+                <Form.Control type="text" placeholder="Card Holder Name" style={{ color: 'black' }} onChange={event => setCardholdername(event.target.value)} value={cardholdername} />
+
+                <span style={{ fontWeight: 'bold', color: 'red' }}>{cardholdernameErr}</span>
+              </div>
+              <div className="col-4 col-sm-6">
+                <Form.Control type="date" onChange={event => setExpirydate(new Date(event.target.value))} placeholder="date" value={expirydate.toISOString().slice(0, 10)} />
+
+                <span style={{ fontWeight: 'bold', color: 'red' }}>{expirydateErr}</span>
+              </div>
+            </div>
+          </div>
+
+
+          <div className="col-sm-5" style={{ color: 'black', backgroundColor: '#b9b8b5', borderRadius: '20px', height: '300px', margin: '10px', padding: '0px' }}>
+            <br></br>
+            <div style={{ color: 'black', backgroundColor: '#000000c7', height: '40px' }}></div>
+
+            <div className="row">
+              <br></br><br></br>
+              <div className="col-8 col-sm-9">
+                <div style={{ color: 'black', backgroundColor: 'white', height: '40px', marginLeft: '20px', width: '100%', paddingTop: '0px' }}>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                </div>
+              </div>
+              <div className="col-4 col-sm-2">
+                <Form.Control type="number" placeholder="CVC" style={{ width: '80px', marginTop: '8px' }} onChange={event => setCvccode(event.target.value)} value={cvccode} />
+                <span style={{ fontWeight: 'bold', color: 'red' }}>{cvccodeErr}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <br></br><br></br><br></br>
+
+
+
+      <Button variant="primary" style={{ margin: '5px' }} onClick={() => history.goBack()}>Back</Button>
+      <Button variant="primary" onClick={Closing}>PAY</Button>
+      <Button variant="primary" onClick={createPayments}>Save</Button>
+      {/* style={{ marginLeft: '5px' }} as={Link} to={`/bill`} */}
+
+
+
+    </>
+  )
+}
+
+
+
+  // const vaild = async () => {
+    // if (validator.isCreditCard(cardnumber)) {
+    //   setCardnumberErr('')
+    // } else {
+    //   setCardnumberErr('Enter valid CreditCard Number')
+    // }
+    // if (+expirydate < +new Date()) {
+    //   setExpirydateErr("Its expiryed");
+    // } else {
+    //   setExpirydateErr("");
+    // }
+    // if (cardholdername.length === 0) {
+    //   setCardholdernameErr("Not Vaild");
+    // } else if (cardholdername.length > 20) {
+    //   setCardholdernameErr("Not Vaild");
+    // } else {
+    //   setCardholdernameErr("");
+
+    // } if (cvccode.length !== 4) {
+    //   setCvccodeErr("4 Num");
+    // } else if (cvccode < 0) {
+    //   setCvccodeErr("Not Vaild");
+    // } else {
+    //   setCvccodeErr("");
+    // }
+    // if (expirydate > new Date() && cvccode.length === 4 && cvccode > 0 && cardholdername.length < 20 && cardholdername.length !== 0 && validator.isCreditCard(cardnumber)) {
+    //   // Stock()
+    //   
+    // }
+  // }

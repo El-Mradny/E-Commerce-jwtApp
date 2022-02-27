@@ -1,0 +1,296 @@
+import React, { useContext, useEffect, useState } from 'react';
+import db from '../../db';
+import ProgressBar from 'react-bootstrap/ProgressBar';
+import Button from 'react-bootstrap/Button';
+import { Link } from "react-router-dom";
+import { useHistory } from "react-router-dom";
+import UserContext from '../../UserContext';
+import Form from 'react-bootstrap/Form';
+import validator from 'validator';
+import {
+  useParams
+} from "react-router-dom";
+
+export default function Payment() {
+  const now = 99;
+  const history = useHistory();
+  const progressInstance = <ProgressBar now={now} animated striped variant="primary" label={`${now}%`} />;
+
+  const { totalCost: stringTotal } = useParams();
+  const totalCost = 1 * stringTotal
+
+  const { totalShipping: stringShippingCost } = useParams();
+  const totalShipping = 1 * stringShippingCost
+
+  const { ShippingId: stringShippingId } = useParams();
+  const ShippingId = 1 * stringShippingId
+
+  console.log('payment totalCost', totalCost);
+  console.log('payment totalShipping', totalShipping);
+  console.log('Shipping Id', ShippingId);
+  
+  const { user } = useContext(UserContext)
+
+  const [payments, setPayments] = useState([])
+  useEffect(() => (async () => setPayments(await db.Payments.findAll()))(), [])
+  console.log(payments);
+
+  const [id, setId] = useState(0)
+  const [method, setMethod] = useState("")
+  const [cardnumber, setCardnumber] = useState("")
+  const [cardholdername, setCardholdername] = useState("")
+  const [cvccode, setCvccode] = useState(0)
+  const [expirydate, setExpirydate] = useState(new Date())
+
+  const [cardnumberErr, setCardnumberErr] = useState("")
+  const [cardholdernameErr, setCardholdernameErr] = useState("")
+  const [cvccodeErr, setCvccodeErr] = useState("")
+  const [expirydateErr, setExpirydateErr] = useState("")
+
+  const [cart, setCart] = useState([])
+  useEffect(() => (async () => setCart(await db.Carts.findByUseridAndStatus(user.id, "unpaid")))(), [user])
+  console.log('hello',cart);
+
+  const createPayments = async () => {
+    await db.Payments.create(() => { }, { id, method: 'Credit card', cardnumber: cardnumber.slice(0, 7), cardholdername, cvccode: cvccode.slice(0, 2), expirydate })
+    setId(0)
+    setMethod("")
+    setCardnumber("")
+    setCardholdername("")
+    setCvccode("")
+    setExpirydate(new Date())
+    var last = payments.slice(-1)[0]
+ 
+
+    await db.Carts.update(() => { }, {id:carts[0].id,
+      status: "unpaid",userid:user.id, paymentid: last.id, shippingid: null, checkoutdate: "",
+      orderstatus: "Processing", total: null,discountid:null
+    })
+  }
+
+  console.log('hello',cart);
+
+
+  //--------------------------------------------------------------
+  console.log(id);
+
+  const [products, setProducts] = useState([])
+  useEffect(() => (async () => setProducts(await db.Products.findAll()))(), [])
+  //console.log(products);
+
+  const [carts, setCarts] = useState([])
+  useEffect(() => (async () => setCarts(await db.Carts.findAll()))(), [])
+  //console.log(carts);
+
+
+
+
+  const Stock = async () => {
+    const cart = await db.Carts.findByUseridAndStatus(user.id, 'unpaid')
+    const cartItem = await db.Cartitems.findByCartid(cart[0].id)
+    cartItem && cartItem.map(async (item) => {
+      if (item.productid !== null) {
+        const product = await db.Products.findOne(item.productid)
+        await db.Products.update(() => { }, {
+          id: product.id, name: product.name, price: product.price,
+          sunlight: product.sunlight, water: product.water, temperature: product.temperature, measures: product.measures,
+          category: product.category,
+          status: product.status, quantity: product.quantity - item.productqty, date: product.date, image: product.image, description: product.description,
+          soldcount: product.soldcount + item.productqty
+        })
+      }
+
+      if (item.packageid !== null) {
+        const pack = await db.Packages.findOne(item.packageid)//packages
+        //console.log(pack);
+        const packproducts = await db.Packageproducts.findByPackageid(pack.id)//list of products inside the package
+        //console.log(packproducts);
+        packproducts.map(async (itemm) => {
+          //console.log(itemm.id);
+          const product = await db.Products.findOne(itemm.productid)//the product inside it 
+          //console.log(product);
+          await db.Products.update(() => { }, {
+            id: product.id, name: product.name, price: product.price,
+            sunlight: product.sunlight, water: product.water, temperature: product.temperature, measures: product.measures,
+            category: product.category,
+            status: product.status, quantity: product.quantity - item.packageqty, date: product.date, image: product.image, description: product.description,
+            soldcount: product.soldcount + item.packageqty
+          })
+        })
+      }
+    })
+  }
+
+
+
+  const [Shippings, setShippings] = useState(null)
+  useEffect(() => (async () => setShippings(await db.Shippings.findByUserid(user.id)))(), [user])
+  //console.log(Shippings);
+
+  // const [payment, setPayment] = useState(null)
+  // useEffect(() => (async () => setPayment(await db.Payments.findOne(cart[0].paymentid)))(), [cart])
+
+
+
+  const Closing = async () => {
+    carts && Shippings && user &&
+      createPayments()
+    console.log(cart[0]);
+    console.log(Shippings[0].id);
+    // const payment = carts.length > 0 && carts[0].paymentid !== null ? await db.Payments.findOne(carts[0].paymentid) : null
+    // console.log(payment && payment.id);
+
+
+    await db.Carts.update(()=>{},{status: "paid", userid: user.id,paymentid:id,shippingid:Shippings[0],checkoutdate:new Date(),
+    orderstatus:"Processing",totalCost:totalCost})
+
+
+    await db.Carts.create(()=>{}, {
+      status: 'unpaid', userid: user.id, paymentid: 1, shippingid: 1, checkoutdate: null, orderstatus: "Processing",
+      total: totalCost, discountid: null
+    })
+
+    window.location = "http://localhost:3000/";
+
+  }
+
+  // await db.Carts.update(()=>{},{ ...carts[0],status: "paid",paymentid:id,shippingid:Shippings[0],checkoutdate:new Date(),
+  // orderstatus:"Processing",totalCost:totalCost})
+
+  return (
+    <>
+      <br></br>
+      {progressInstance}
+      <br></br>
+      <h1>Payment</h1>
+      <br></br>
+
+      <div className="container">
+        <div className="row">
+          <div className="col-sm-5" style={{ color: 'black', backgroundColor: '#b9b8b5', borderRadius: '20px', height: '300px', margin: '10px' }}>
+            <br></br>
+            {/* <img
+              src="../CARD.jpg"
+              alt="card"
+              width='13%'
+            /> */}
+
+            <div style={{
+              marginLeft: '200px',
+            }}>
+
+            </div>
+            <br></br><br></br><br></br>
+            <Form.Control type="text" placeholder="Card number" onChange={event => setCardnumber(event.target.value)} value={cardnumber} />
+
+            <span style={{ fontWeight: 'bold', color: 'red' }}>{cardnumberErr}</span>
+            <br></br>
+
+            <div className="row">
+              <div className="col-8 col-sm-6">
+                <Form.Control type="text" placeholder="Card Holder Name" style={{ color: 'black' }} onChange={event => setCardholdername(event.target.value)} value={cardholdername} />
+
+                <span style={{ fontWeight: 'bold', color: 'red' }}>{cardholdernameErr}</span>
+              </div>
+              <div className="col-4 col-sm-6">
+                <Form.Control type="date" onChange={event => setExpirydate(new Date(event.target.value))} placeholder="date" value={expirydate.toISOString().slice(0, 10)} />
+
+                <span style={{ fontWeight: 'bold', color: 'red' }}>{expirydateErr}</span>
+              </div>
+            </div>
+          </div>
+
+
+          <div className="col-sm-5" style={{ color: 'black', backgroundColor: '#b9b8b5', borderRadius: '20px', height: '300px', margin: '10px', padding: '0px' }}>
+            <br></br>
+            <div style={{ color: 'black', backgroundColor: '#000000c7', height: '40px' }}></div>
+
+            <div className="row">
+              <br></br><br></br>
+              <div className="col-8 col-sm-9">
+                <div style={{ color: 'black', backgroundColor: 'white', height: '40px', marginLeft: '20px', width: '100%', paddingTop: '0px' }}>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                  <hr style={{ margin: '7px', border: '1px solid  #ffe680' }}></hr>
+                </div>
+              </div>
+              <div className="col-4 col-sm-2">
+                <Form.Control type="number" placeholder="CVC" style={{ width: '80px', marginTop: '8px' }} onChange={event => setCvccode(event.target.value)} value={cvccode} />
+                <span style={{ fontWeight: 'bold', color: 'red' }}>{cvccodeErr}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <br></br><br></br><br></br>
+
+
+
+      <Button variant="primary" style={{ margin: '5px' }} onClick={() => history.goBack()}>Back</Button>
+      <Button variant="primary" onClick={Closing}>PAY</Button>
+      <Button variant="primary" onClick={createPayments}>Save</Button>
+      {/* style={{ marginLeft: '5px' }} as={Link} to={`/bill`} */}
+
+
+
+    </>
+  )
+}
+
+
+
+  // const vaild = async () => {
+    // if (validator.isCreditCard(cardnumber)) {
+    //   setCardnumberErr('')
+    // } else {
+    //   setCardnumberErr('Enter valid CreditCard Number')
+    // }
+    // if (+expirydate < +new Date()) {
+    //   setExpirydateErr("Its expiryed");
+    // } else {
+    //   setExpirydateErr("");
+    // }
+    // if (cardholdername.length === 0) {
+    //   setCardholdernameErr("Not Vaild");
+    // } else if (cardholdername.length > 20) {
+    //   setCardholdernameErr("Not Vaild");
+    // } else {
+    //   setCardholdernameErr("");
+
+    // } if (cvccode.length !== 4) {
+    //   setCvccodeErr("4 Num");
+    // } else if (cvccode < 0) {
+    //   setCvccodeErr("Not Vaild");
+    // } else {
+    //   setCvccodeErr("");
+    // }
+    // if (expirydate > new Date() && cvccode.length === 4 && cvccode > 0 && cardholdername.length < 20 && cardholdername.length !== 0 && validator.isCreditCard(cardnumber)) {
+    //   // Stock()
+    //   
+    // }
+  // }
+
+    // const createCarts = async () => {
+  //   await db.Carts.create(setCarts, { id, status: 'unpaid', userid: user.id, paymentid, shippingid, checkoutdate, orderstatus, total, discountid })
+  //   setId(0)
+  //   setStatus("")
+  //   setUserid("")
+  //   setPaymentid(0)
+  //   setShippingid(0)
+  //   setCheckoutdate(new Date())
+  //   setOrderstatus("")
+  //   setTotal(0)
+  //   setDiscountid(0)
+  // }
+
+    // const [id, setId] = useState(0)
+  // const [status, setStatus] = useState("")
+  // const [userid, setUserid] = useState("")
+  // const [paymentid, setPaymentid] = useState(0)
+  // const [shippingid, setShippingid] = useState(0)
+  // const [checkoutdate, setCheckoutdate] = useState(new Date())
+  // const [orderstatus, setOrderstatus] = useState("")
+  // const [total, setTotal] = useState(0)
+  // const [discountid, setDiscountid] = useState(0)
